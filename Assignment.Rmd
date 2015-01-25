@@ -1,0 +1,57 @@
+---
+title: "Practical Machine Learning"
+author: "JB"
+date: "Monday, January 26, 2015"
+output: html_document
+---
+```{r, echo=FALSE, cache=TRUE}
+setwd("~/PracticalMacinelearning")
+library(caret)
+library(randomForest)
+```
+
+Reading in the data, cleaning it up a little
+
+```{r, cache=TRUE, }
+training<-read.csv("pml-training.csv",na.strings=c("#DIV/0!","NA","") )
+
+summary(training[,1:10])
+```
+Some of the data are not going to be helpful. names and the index are just taking up space. Other variables are mostly NAs. To clean it up we make a small function.
+
+```{r, echo=FALSE, cache=TRUE}
+
+headCleaner <- function(data){
+  badCols = grepl("X|user_name|timestamp|new_window", colnames(data))
+  
+  data <- data[,!badCols]
+  data <- data[, (colSums(is.na(data)) == 0)]
+  return(data)
+  rm(data)
+}
+```
+
+Now we split the data into training and testing groups (60/40).
+
+```{r, echo=TRUE, cache=TRUE}
+
+training<-headCleaner(training)
+inTrain = createDataPartition(y = training$classe, p = 0.6, list = FALSE)
+validating = training[-inTrain, ]
+training = training[inTrain, ]
+```
+
+With large amounts of unscaled data for a classification problem, a random forest should fit the bill.
+
+```{r, echo=TRUE, cache=TRUE}
+
+modelFit <- randomForest(training$classe~.,data=training)
+print(modelFit)
+
+```
+
+The Out of Bag error is ~0.3 %. Let's see how it does on the validation set.
+
+```{r, echo=TRUE, cache=TRUE}
+confusionMatrix(predict(modelFit,newdata=validating[,-ncol(validating)]),validating$classe)
+```
